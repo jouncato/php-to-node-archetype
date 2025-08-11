@@ -1,0 +1,88 @@
+# Reglas del Arquetipo de Migración PHP a Node.js para Cursor AI
+
+## Objetivo
+Estas reglas guían a Cursor AI para comprender y utilizar correctamente el arquetipo de migración de PHP 7 a Node.js 22, asegurando consistencia y calidad en las tareas de migración.
+
+## Estructura del Proyecto
+- **`src/`**: Código fuente principal.
+  - **`config/`**: Configuración de la aplicación (base de datos, entorno).
+  - **`models/`**: Clases que representan las entidades de datos.
+  - **`repositories/`**: Capa de acceso a datos (DAO). Solo SQL aquí.
+  - **`services/`**: Lógica de negocio. Cada servicio tiene una responsabilidad única (SOLID).
+  - **`controllers/`**: Manejo de solicitudes HTTP. Deben ser delgados.
+  - **`routes/`**: Definición de rutas de la API.
+  - **`middleware/`**: Funciones intermedias (auth, logging, validación).
+  - **`utils/`**: Funciones auxiliares reutilizables.
+- **`tests/`**: Pruebas unitarias y de integración.
+- **`migrations/`**: Scripts SQL para la base de datos.
+- **`examples/php/`**: Ejemplos de código PHP a migrar.
+- **`docs/`**: Documentación detallada.
+
+## Principios de Arquitectura
+1.  **Separación de Responsabilidades**: Cada capa tiene un propósito claro. Los controladores no contienen lógica de negocio.
+2.  **Inyección de Dependencias**: Los servicios y repositorios se inyectan en los constructores de las clases que los necesitan.
+3.  **SOLID**:
+    -   **S** (Single Responsibility): Cada clase/fichero tiene una sola razón para cambiar.
+    -   **O** (Open/Closed): Las entidades deben estar abiertas para extensión pero cerradas para modificación.
+    -   **L** (Liskov Substitution): No aplicable directamente en JS, pero mantener coherencia en interfaces simuladas.
+    -   **I** (Interface Segregation): No hay interfaces formales, pero mantener interfaces pequeñas y específicas en objetos pasados como parámetros.
+    -   **D** (Dependency Inversion): Depender de abstracciones (clases/repositorios) no de implementaciones concretas.
+4.  **Sin TypeScript**: Todo el código debe ser JavaScript estándar ES6+.
+5.  **Sin Abreviaturas**: Usar nombres descriptivos y en inglés.
+
+## Convenciones de Codificación
+- **Nombres de Archivos**: `camelCase` para variables y funciones, `PascalCase` para clases y constructores.
+  - Controladores: `nombreEntidadController.js` (ej: `userController.js`)
+  - Servicios: `nombreEntidadService.js` (ej: `userService.js`)
+  - Repositorios: `nombreEntidadRepository.js` (ej: `userRepository.js`)
+  - Modelos: `NombreEntidad.js` (ej: `User.js`)
+- **Nombres de Funciones/Métodos**: Verbos descriptivos en `camelCase`.
+- **Variables**: `camelCase`, descriptivas.
+- **Constantes**: `UPPER_SNAKE_CASE`.
+- **Comentarios**: Usar comentarios JSDoc para funciones y clases exportadas. Comentarios inline para aclarar lógica compleja.
+
+## Manejo de Datos y Base de Datos
+- **Modelos**: Representan la estructura de los datos. Incluyen métodos `toDatabaseRow()` y `toJSON()`.
+- **Repositorios**: Única capa que interactúa con `dbClient`. Métodos CRUD básicos.
+- **Servicios**: Contienen la lógica de negocio. Validan datos, coordinan operaciones entre repositorios.
+- **Controladores**: Llaman a servicios. Manejan `req`/`res`. No acceden a `dbClient` directamente.
+- **Base de Datos**: Usar `mysql2/promise` con un pool de conexiones (`dbClient`). Manejar errores de base de datos.
+
+## Autenticación y Seguridad
+- **Autenticación**: Usar JWT. Middleware `authMiddleware` para proteger rutas.
+- **Contraseñas**: Siempre hashear con `bcryptjs` antes de guardar.
+- **Validación**: Usar `Joi` en el middleware `validation.js`.
+
+## Pruebas
+- **Herramientas**: Jest para unitarias, `supertest` para integración.
+- **Cobertura**: Mínimo 80%. Apuntar a 90%+ en capas críticas (servicios).
+- **Unitarias**: Mockear dependencias (especialmente `dbClient` y otros servicios/repositorios).
+- **Integración**: Probar endpoints completos. Mockear BD si es necesario para velocidad.
+- **Fixtures**: Usar `tests/fixtures/` para datos de prueba reutilizables.
+
+## Documentación
+- **README.md**: Explicar el propósito, estructura, instalación, uso y cómo contribuir.
+- **Mapeo**: Mantener `docs/php-to-node-mapping.md` actualizado con equivalencias.
+- **Guía de Migración**: `docs/migration-guide.md` con pasos detallados.
+
+## Tareas Comunes para Cursor AI
+### Migrar un nuevo servicio PHP:
+1.  Analiza el PHP: rutas, métodos, lógica, entidades.
+2.  Crea el Modelo en `src/models/`.
+3.  Crea el Repositorio en `src/repositories/`.
+4.  Crea el Servicio en `src/services/`.
+5.  Crea el Controlador en `src/controllers/`.
+6.  Define las Rutas en `src/routes/`.
+7.  Registra las rutas en `src/app.js`.
+8.  Escribe pruebas unitarias en `tests/unit/`.
+9.  Escribe pruebas de integración en `tests/integration/`.
+10. Actualiza documentación si es necesario.
+
+### Refactorizar código existente:
+- Si un archivo crece demasiado, divide la lógica en funciones o crea nuevos servicios.
+- Si una función hace más de una cosa, sepárala siguiendo SRP.
+- Si hay lógica de negocio en un controlador, muévela a un servicio.
+
+### Añadir nueva funcionalidad:
+- Sigue la misma estructura: modelo -> repositorio -> servicio -> controlador -> ruta.
+- Escribe pruebas para la nueva funcionalidad.
