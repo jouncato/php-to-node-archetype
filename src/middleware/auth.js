@@ -12,7 +12,7 @@ function authMiddleware(req, res, next) {
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (!token) {
-    logger.warn('Intento de acceso sin token de autenticación');
+    logger.warn(`Intento de acceso sin token de autenticación desde IP: ${req.ip}`);
     return res.status(401).json({
       success: false,
       message: 'Acceso denegado. Se requiere token de autenticación.'
@@ -23,9 +23,10 @@ function authMiddleware(req, res, next) {
     // Verificar el token
     const decoded = authService.verifyToken(token);
     req.user = decoded; // Agregar info del usuario al request
+    logger.info(`Usuario autenticado: ID ${decoded.id}, Email ${decoded.email}`);
     next();
   } catch (error) {
-    logger.warn('Token de autenticación inválido o expirado');
+    logger.warn(`Token de autenticación inválido o expirado desde IP: ${req.ip}`);
     return res.status(401).json({
       success: false,
       message: 'Token inválido o expirado'

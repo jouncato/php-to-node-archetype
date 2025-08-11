@@ -1,37 +1,42 @@
 # Reglas del Arquetipo de Migración PHP a Node.js para Cursor AI
 
 ## Objetivo
-Estas reglas guían a Cursor AI para comprender y utilizar correctamente el arquetipo de migración de PHP 7 a Node.js 22, asegurando consistencia y calidad en las tareas de migración.
+Estas reglas guían a Cursor AI para comprender y utilizar correctamente el arquetipo de migración de PHP 7 a Node.js 22, asegurando consistencia, calidad y seguridad en las tareas de migración. El objetivo es facilitar una transición robusta y alineada con DevSecOps.
 
 ## Estructura del Proyecto
-- **`src/`**: Código fuente principal.
-  - **`config/`**: Configuración de la aplicación (base de datos, entorno).
+- **`src/`**: Código fuente principal, organizado en capas.
+  - **`config/`**: Configuración de la aplicación (base de datos, entorno, JWT).
   - **`models/`**: Clases que representan las entidades de datos.
-  - **`repositories/`**: Capa de acceso a datos (DAO). Solo SQL aquí.
+  - **`repositories/`**: Capa de acceso a datos (DAO). Única que interactúa con `dbClient`.
   - **`services/`**: Lógica de negocio. Cada servicio tiene una responsabilidad única (SOLID).
-  - **`controllers/`**: Manejo de solicitudes HTTP. Deben ser delgados.
-  - **`routes/`**: Definición de rutas de la API.
-  - **`middleware/`**: Funciones intermedias (auth, logging, validación).
+  - **`controllers/`**: Manejo de solicitudes HTTP. Deben ser delgados, coordinando con servicios.
+  - **`routes/`**: Definición de rutas de la API. Asocia rutas con controladores.
+  - **`middleware/`**: Funciones intermedias para autenticación, seguridad, logging, validación.
   - **`utils/`**: Funciones auxiliares reutilizables.
 - **`tests/`**: Pruebas unitarias y de integración.
+  - **`unit/`**: Pruebas unitarias para servicios, controladores, repositorios.
+  - **`integration/`**: Pruebas de integración para rutas.
+  - **`fixtures/`**: Datos de prueba reutilizables.
 - **`migrations/`**: Scripts SQL para la base de datos.
 - **`examples/php/`**: Ejemplos de código PHP a migrar.
 - **`docs/`**: Documentación detallada.
+- **`.cursor/`**: Reglas y configuraciones específicas para Cursor AI.
 
 ## Principios de Arquitectura
-1.  **Separación de Responsabilidades**: Cada capa tiene un propósito claro. Los controladores no contienen lógica de negocio.
-2.  **Inyección de Dependencias**: Los servicios y repositorios se inyectan en los constructores de las clases que los necesitan.
-3.  **SOLID**:
+1.  **Arquitectura Limpia/Capas**: Separación clara entre presentación (controladores), lógica de negocio (servicios) y acceso a datos (repositorios).
+2.  **Separación de Responsabilidades**: Cada capa y cada módulo tiene un propósito único y bien definido.
+3.  **Inyección de Dependencias**: Los servicios y repositorios se inyectan en los constructores o se requieren donde se necesitan para facilitar pruebas y desacoplamiento.
+4.  **SOLID**:
     -   **S** (Single Responsibility): Cada clase/fichero tiene una sola razón para cambiar.
     -   **O** (Open/Closed): Las entidades deben estar abiertas para extensión pero cerradas para modificación.
-    -   **L** (Liskov Substitution): No aplicable directamente en JS, pero mantener coherencia en interfaces simuladas.
-    -   **I** (Interface Segregation): No hay interfaces formales, pero mantener interfaces pequeñas y específicas en objetos pasados como parámetros.
+    -   **L** (Liskov Substitution): (Menos aplicable en JS) Mantener coherencia en interfaces simuladas.
+    -   **I** (Interface Segregation): (Menos aplicable en JS) Mantener funciones/interfaces pequeñas y específicas.
     -   **D** (Dependency Inversion): Depender de abstracciones (clases/repositorios) no de implementaciones concretas.
-4.  **Sin TypeScript**: Todo el código debe ser JavaScript estándar ES6+.
-5.  **Sin Abreviaturas**: Usar nombres descriptivos y en inglés.
+5.  **Sin TypeScript**: Todo el código debe ser JavaScript estándar ES6+.
+6.  **Sin Abreviaturas**: Usar nombres descriptivos y en inglés.
 
 ## Convenciones de Codificación
-- **Nombres de Archivos**: `camelCase` para variables y funciones, `PascalCase` para clases y constructores.
+- **Nombres de Archivos**: `camelCase` para variables, funciones y nombres de archivo; `PascalCase` para clases y constructores.
   - Controladores: `nombreEntidadController.js` (ej: `userController.js`)
   - Servicios: `nombreEntidadService.js` (ej: `userService.js`)
   - Repositorios: `nombreEntidadRepository.js` (ej: `userRepository.js`)
@@ -39,50 +44,95 @@ Estas reglas guían a Cursor AI para comprender y utilizar correctamente el arqu
 - **Nombres de Funciones/Métodos**: Verbos descriptivos en `camelCase`.
 - **Variables**: `camelCase`, descriptivas.
 - **Constantes**: `UPPER_SNAKE_CASE`.
-- **Comentarios**: Usar comentarios JSDoc para funciones y clases exportadas. Comentarios inline para aclarar lógica compleja.
+- **Comentarios**:
+  - Usar comentarios JSDoc para funciones y clases exportadas.
+  - Comentarios inline para aclarar lógica compleja o decisiones no obvias.
+  - Incluir comentarios estratégicos que ayuden a Cursor a entender el propósito de archivos y bloques de código (ej: "Este servicio reemplaza user-service.php").
 
 ## Manejo de Datos y Base de Datos
-- **Modelos**: Representan la estructura de los datos. Incluyen métodos `toDatabaseRow()` y `toJSON()`.
-- **Repositorios**: Única capa que interactúa con `dbClient`. Métodos CRUD básicos.
-- **Servicios**: Contienen la lógica de negocio. Validan datos, coordinan operaciones entre repositorios.
-- **Controladores**: Llaman a servicios. Manejan `req`/`res`. No acceden a `dbClient` directamente.
-- **Base de Datos**: Usar `mysql2/promise` con un pool de conexiones (`dbClient`). Manejar errores de base de datos.
+- **Modelos**: Representan la estructura de los datos. Incluyen métodos `toDatabaseRow()` (para inserciones/actualizaciones) y `toJSON()` (para respuestas API, excluyendo información sensible como passwords).
+- **Repositorios**:
+  - Única capa que interactúa con `dbClient` (`src/config/database.js`).
+  - Métodos CRUD básicos (`create`, `findById`, `findAll`, `update`, `delete`).
+  - **Siempre usar parámetros en consultas SQL** (`dbClient.query(sql, params)`) para prevenir inyecciones SQL.
+- **Servicios**:
+  - Contienen la lógica de negocio principal.
+  - Validan datos recibidos de los controladores.
+  - Coordinan operaciones entre uno o más repositorios.
+  - Manejan errores específicos de la lógica de negocio y los lanzan para que el controlador los maneje.
+- **Controladores**:
+  - Manejan objetos `req` y `res` de Express.
+  - Extraen datos de la solicitud (`req.params`, `req.body`, `req.query`).
+  - Llaman a los servicios correspondientes.
+  - Envían respuestas HTTP estructuradas (`res.status().json()`).
+  - **No deben** acceder directamente a `dbClient` ni contener lógica de negocio compleja.
+- **Base de Datos**:
+  - Usar `mysql2/promise` con un pool de conexiones (`dbClient`).
+  - Manejar errores de base de datos de forma explícita y registrarlos.
 
 ## Autenticación y Seguridad
-- **Autenticación**: Usar JWT. Middleware `authMiddleware` para proteger rutas.
-- **Contraseñas**: Siempre hashear con `bcryptjs` antes de guardar.
-- **Validación**: Usar `Joi` en el middleware `validation.js`.
+- **Autenticación**: Usar JWT (JSON Web Tokens) sin estado. El middleware `authMiddleware` (`src/middleware/auth.js`) verifica tokens.
+- **Autorización**: El `authMiddleware` adjunta la información del usuario decodificado (`req.user`) a la solicitud para su uso en controladores.
+- **Contraseñas**: Siempre hashear con `bcryptjs` antes de guardar en la base de datos.
+- **Validación y Sanitización**: Usar `Joi` en el middleware `validation.js` (`src/middleware/validation.js`) para validar y sanear entradas. Utilizar la opción `{ stripUnknown: true }`.
+- **Protección de Rutas**: Aplicar `authMiddleware` a todas las rutas que requieran autenticación.
+
+## Seguridad (DevSecOps Integrado)
+1.  **Gestión de Secretos**: Nunca hardcodear secretos. Usar `.env` y asegurarse de que `.env` está en `.gitignore`. En producción, usar secretos gestionados por la plataforma (GitHub Secrets, AWS Secrets Manager, etc.).
+2.  **Validación y Sanitización Exhaustiva**: Validar y sanear *todas* las entradas del usuario en el middleware de validación (`src/middleware/validation.js`).
+3.  **Prevención de Inyección SQL**: En los repositorios (`src/repositories/`), usar *exclusivamente* parámetros en las consultas SQL con `dbClient.query(sql, params)`. *Nunca* concatenar entradas del usuario directamente en strings SQL.
+4.  **Autenticación Robusta**:
+    - Usar JWT para autenticación sin estado.
+    - Configurar tiempos de expiración cortos para los tokens.
+    - El middleware `authMiddleware` verifica tokens y registra accesos/errores.
+    - Aplicar rate limiting estricto a endpoints de autenticación (`src/middleware/security.js`).
+5.  **Headers de Seguridad**: Usar `helmet` (`src/middleware/security.js`) para configurar headers HTTP seguros y ocultar información del servidor.
+6.  **CORS**: Configurar `cors` (`src/middleware/security.js`) correctamente para restringir orígenes en producción.
+7.  **Rate Limiting**: Implementar limitación de tasa global (`src/middleware/security.js`) y específica para endpoints sensibles (login) con `express-rate-limit`.
+8.  **Logging de Seguridad**: Registrar eventos importantes de seguridad como intentos de login fallidos, accesos no autorizados, errores críticos usando `logger` (`src/utils/logger.js`).
+9.  **Dependencias**: Ejecutar regularmente `npm audit` (ver `package.json`) para verificar vulnerabilidades. Mantener dependencias actualizadas.
+10. **Dockerfile Seguro**: Usar usuario no root, imagen base mínima (`node:22-slim`), y limpiar cachés.
 
 ## Pruebas
 - **Herramientas**: Jest para unitarias, `supertest` para integración.
-- **Cobertura**: Mínimo 80%. Apuntar a 90%+ en capas críticas (servicios).
-- **Unitarias**: Mockear dependencias (especialmente `dbClient` y otros servicios/repositorios).
-- **Integración**: Probar endpoints completos. Mockear BD si es necesario para velocidad.
+- **Cobertura**: Mínimo 80%. Apuntar a 90%+ en capas críticas (servicios, repositorios).
+- **Unitarias**:
+  - Mockear dependencias (especialmente `dbClient` usando `jest-mock-extended` y otros servicios/repositorios).
+  - Probar cada método del servicio/repo con diferentes escenarios (éxito, error, casos límite).
+- **Integración**:
+  - Probar endpoints completos usando `supertest`.
+  - Mockear BD si es necesario para velocidad o aislamiento (`pg-mem` o mocks manuales).
 - **Fixtures**: Usar `tests/fixtures/` para datos de prueba reutilizables.
 
 ## Documentación
-- **README.md**: Explicar el propósito, estructura, instalación, uso y cómo contribuir.
+- **README.md**: Explicar el propósito, estructura, instalación, uso, seguridad y cómo contribuir.
 - **Mapeo**: Mantener `docs/php-to-node-mapping.md` actualizado con equivalencias.
 - **Guía de Migración**: `docs/migration-guide.md` con pasos detallados.
+- **Reglas para Cursor**: Este archivo (`.cursor/rules.mdc`) contiene las reglas más importantes.
 
 ## Tareas Comunes para Cursor AI
+
 ### Migrar un nuevo servicio PHP:
-1.  Analiza el PHP: rutas, métodos, lógica, entidades.
-2.  Crea el Modelo en `src/models/`.
-3.  Crea el Repositorio en `src/repositories/`.
-4.  Crea el Servicio en `src/services/`.
-5.  Crea el Controlador en `src/controllers/`.
-6.  Define las Rutas en `src/routes/`.
-7.  Registra las rutas en `src/app.js`.
-8.  Escribe pruebas unitarias en `tests/unit/`.
-9.  Escribe pruebas de integración en `tests/integration/`.
-10. Actualiza documentación si es necesario.
+1.  **Analiza el PHP**: Identifica rutas, métodos HTTP, lógica de negocio, entidades y dependencias del servicio PHP (ej: `examples/php/product-service.php`).
+2.  **Crea el Modelo**: En `src/models/NombreEntidad.js`. Define la clase con propiedades y métodos `toDatabaseRow()` y `toJSON()`.
+3.  **Crea el Repositorio**: En `src/repositories/nombreEntidadRepository.js`. Implementa métodos CRUD usando `dbClient.query(sql, params)`.
+4.  **Crea el Servicio**: En `src/services/nombreEntidadService.js`. Inyecta el repositorio. Implementa la lógica de negocio, validaciones y coordinación.
+5.  **Crea el Controlador**: En `src/controllers/nombreEntidadController.js`. Inyecta el servicio. Define métodos asíncronos para manejar `req/res`. Maneja errores con `try/catch`.
+6.  **Define las Rutas**: En `src/routes/nombreEntidadRoutes.js`. Crea un `express.Router()`, define endpoints y asocia controladores. Aplica `authMiddleware` si es necesario.
+7.  **Registra las Rutas**: En `src/app.js`, importa e `use()` el nuevo router.
+8.  **Validación y Sanitización**: Añade validadores/saneadores en `src/middleware/validation.js` para las nuevas rutas.
+9.  **Seguridad**: Asegúrate de que los nuevos endpoints estén protegidos por `authMiddleware` y rate limiting si son sensibles.
+10. **Pruebas Unitarias**: Escribe pruebas en `tests/unit/services/` y `tests/unit/repositories/`. Mockea dependencias.
+11. **Pruebas de Integración**: Escribe pruebas en `tests/integration/` usando `supertest`.
+12. **Documentación**: Actualiza `README.md` o `docs/` si es necesario.
 
 ### Refactorizar código existente:
-- Si un archivo crece demasiado, divide la lógica en funciones o crea nuevos servicios.
-- Si una función hace más de una cosa, sepárala siguiendo SRP.
+- Si un archivo crece demasiado, divide la lógica en funciones auxiliares (en `utils/`) o crea nuevos servicios.
+- Si una función o método hace más de una cosa, sepárala siguiendo el Principio de Responsabilidad Única (SRP).
 - Si hay lógica de negocio en un controlador, muévela a un servicio.
 
 ### Añadir nueva funcionalidad:
-- Sigue la misma estructura: modelo -> repositorio -> servicio -> controlador -> ruta.
-- Escribe pruebas para la nueva funcionalidad.
+- Sigue la misma estructura arquitectónica: modelo -> repositorio -> servicio -> controlador -> ruta.
+- Escribe validaciones en `validation.js`.
+- Aplica middleware de seguridad según sea necesario.
+- Escribe pruebas unitarias e integración para la nueva funcionalidad.

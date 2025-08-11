@@ -34,7 +34,7 @@ jobs:
         cache: 'npm'
 
     - name: Install dependencies
-      run: npm ci
+      run: npm install --prefer-offline --no-audit --progress=false --silent
 
     - name: Run migrations
       run: |
